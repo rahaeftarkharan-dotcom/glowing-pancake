@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ابزار نهایی چینش داوران کنگره ۶۰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a7c64a51e6.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f8f9fa; }
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); padding: 20px; }
+        .input-area { border: 1px solid #ccc; border-radius: 8px; padding: 10px; min-height: 150px; resize: vertical; font-family: monospace; }
+        .btn-primary { background-color: #3f51b5; color: white; transition: all 0.2s; }
+        .btn-primary:hover { background-color: #303f9f; transform: translateY(-1px); }
+        .btn-secondary { background-color: #e0e0e0; color: #333; transition: all 0.2s; }
+        .btn-secondary:hover { background-color: #bdbdbd; }
+        .danger-alert { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 10px; border-radius: 8px; }
+        .success-alert { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 10px; border-radius: 8px; }
+        .read-only-overlay { opacity: 0.5; pointer-events: none; }
+        .read-only-inputs textarea, .read-only-inputs input, .read-only-inputs select, .read-only-inputs button {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-gray-50">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex items-center space-x-3" dir="ltr">
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <p class="text-lg text-gray-700 font-bold" dir="rtl">در حال بارگذاری داده‌ها...</p>
+        </div>
+    </div>
+
+    <header class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-[#3f51b5] mb-2">⚽️ سیستم چینش داوران هوشمند کنگره ۶۰</h1>
+        <p id="user-info" class="text-sm text-gray-600">وضعیت احراز هویت: <span id="auth-status">در حال بررسی...</span> | شناسه کاربری: <span id="current-user-id" class="font-mono text-xs">...</span></p>
+    </header>
+
+    <!-- پنل ورود مدیر حذف شد و دسترسی بر اساس User ID است -->
+
+    <div id="main-content" class="max-w-6xl mx-auto space-y-8">
+        
+        <!-- حالت فقط مشاهده / مدیریت -->
+        <div id="access-control-area" class="card p-4 flex justify-between items-center bg-blue-50 border-l-4 border-blue-500">
+            <div id="mode-display" class="font-bold text-blue-700"></div>
+            <div id="manager-tools" class="flex space-x-2 space-x-reverse">
+                <button id="toggle-manager-mode" class="btn-primary px-3 py-1 text-sm hidden" onclick="toggleManagerMode()">
+                    <i class="fas fa-hammer"></i> <span id="manager-mode-text">فعال‌سازی ویرایش دستی (مدیر)</span>
+                </button>
+                <button id="generate-share-link" class="btn-secondary px-3 py-1 text-sm hidden" onclick="generateShareLink()">
+                    <i class="fas fa-share-alt"></i> تولید لینک اشتراک‌گذاری (فقط مشاهده)
+                </button>
+            </div>
+        </div>
+
+        <!-- ورودی داده‌ها و قوانین -->
+        <div id="input-section" class="grid grid-cols-1 lg:grid-cols-3 gap-6 read-only-inputs">
+            
+            <div class="card space-y-4">
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-3"><i class="fas fa-users"></i> ۱. داوران</h2>
+                <p class="text-sm text-gray-600">فرمت: نام، نمایندگی (یا آزاد)، سطح (A/B/C)، تیم بازیکن (یا -)، زمان عدم دسترسی (اختیاری: HH:MM-HH:MM;...)</p>
+                <textarea id="referees-input" class="input-area w-full" rows="6"></textarea>
+                <button onclick="saveData('referees', 'referees-input')" class="btn-primary w-full py-2"><i class="fas fa-save"></i> ذخیره داوران</button>
+            </div>
+
+            <div class="card space-y-4">
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-3"><i class="fas fa-shield-alt"></i> ۲. تیم‌ها و نمایندگی‌ها</h2>
+                <p class="text-sm text-gray-600">فرمت: نام تیم، نمایندگی</p>
+                <textarea id="teams-input" class="input-area w-full" rows="6"></textarea>
+                <button onclick="saveData('teams', 'teams-input')" class="btn-primary w-full py-2"><i class="fas fa-save"></i> ذخیره تیم‌ها</button>
+            </div>
+
+            <div class="card space-y-4">
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-3"><i class="fas fa-calendar-alt"></i> ۳. مسابقات (هفته جاری)</h2>
+                <p class="text-sm text-gray-600">فرمت: تورنمنت، تیم ۱، تیم ۲، YYYY-MM-DD، مرحله، HH:MM، زمین (1/2)، ۵-داور (بله/خیر)</p>
+                <textarea id="matches-input" class="input-area w-full" rows="6"></textarea>
+                <button onclick="saveData('matches', 'matches-input')" class="btn-primary w-full py-2"><i class="fas fa-save"></i> ذخیره مسابقات</button>
+            </div>
+
+        </div>
+
+        <!-- کنترل و چینش -->
+        <div class="card flex justify-center p-6 mt-6 read-only-inputs">
+            <button id="generate-assignment-btn" onclick="startAssignmentProcess()" class="btn-primary py-3 px-8 text-xl font-bold rounded-full transition duration-300 transform hover:scale-105">
+                <i class="fas fa-magic"></i> 🎯 تولید چینش هوشمند
+            </button>
+        </div>
+
+        <!-- نتیجه چینش هوشمند -->
+        <div class="card mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-clipboard-list"></i> نتیجه آخرین چینش هوشمند</h2>
+            
+            <div id="assignment-result" class="space-y-4">
+                <p class="text-gray-500">پس از تولید چینش، نتایج در اینجا نمایش داده خواهد شد.</p>
+            </div>
+            
+            <div id="quota-warnings" class="mt-4 space-y-2"></div>
+
+            <div class="mt-6 flex justify-end space-x-4 space-x-reverse read-only-inputs">
+                <button id="final-save-btn" onclick="saveAssignment()" class="py-2 px-6 text-white font-bold rounded-lg opacity-50 cursor-not-allowed" style="background-color: #f44336;" disabled>
+                    <i class="fas fa-lock"></i> ذخیره نهایی (رفع تناقض لازم است)
+                </button>
+            </div>
+        </div>
+
+        <!-- سیستم ارزیابی عملکرد -->
+        <div class="card mt-8" id="evaluation-panel">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-chart-line"></i> 📊 سیستم ارزیابی عملکرد داوران</h2>
+            
+            <div id="evaluation-controls" class="space-y-4 read-only-inputs">
+                <p class="font-semibold text-lg">انتخاب مسابقه برای ارزیابی:</p>
+                <select id="evaluation-match-select" class="w-full p-2 border rounded-lg bg-gray-50"></select>
+                <button id="load-eval-btn" onclick="loadEvaluationForm()" class="btn-primary py-2 px-4" disabled><i class="fas fa-file-alt"></i> بارگذاری فرم ارزیابی</button>
+            </div>
+
+            <div id="evaluation-form-area" class="mt-6">
+                <!-- فرم ارزیابی در اینجا لود می‌شود -->
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- پنجره مودال حل تناقض -->
+    <div id="conflict-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-2xl w-full mx-4" dir="rtl">
+            <h3 class="text-2xl font-extrabold text-[#f44336] mb-4 border-b pb-2"><i class="fas fa-exclamation-triangle"></i> تناقض حیاتی در چینش!</h3>
+            <p class="text-gray-700 mb-4">ذخیره نهایی ممنوع است. لطفاً تناقضات زیر را با انتخاب داور جایگزین رفع کنید.</p>
+            
+            <div id="conflict-list" class="space-y-6 max-h-96 overflow-y-auto pr-2">
+                <!-- Conflict items will be loaded here -->
+            </div>
+            
+            <div id="conflict-status-message" class="mt-6 font-bold text-center"></div>
+
+            <div class="mt-6 flex justify-end">
+                <button id="close-conflict-modal" onclick="closeConflictModal()" class="btn-primary py-2 px-6 bg-gray-500 hover:bg-gray-600" disabled>
+                    <i class="fas fa-times"></i> بستن
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Block -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // تنظیمات پایه
+        setLogLevel('Debug');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+        let isManager = false; // حالت مدیریت (بر اساس USER ID)
+        let isReadOnly = true;  // پیش‌فرض: فقط مشاهده
+
+        // *** شناسه مدیر: این ID باید با '05836892850460806157' جایگزین شود ***
+        const MANAGER_USER_ID = '05836892850460806157'; 
+        let isManagerMode = false; // حالت نادیده گرفتن قوانین (ویرایش دستی)
+
+        // ساختارهای داده ذخیره شده
+        let storedData = { referees: [], teams: {}, matches: [], assignment: [], evaluations: [] };
+        let currentConflicts = [];
+        let allReferees = []; // لیست کامل داوران (تجزیه شده)
+        let allTeams = {};   // مپ تیم‌ها به نمایندگی (تجزیه شده)
+
+        // متغیرهای نقش
+        const BASE_ROLES = ['داور اول', 'داور دوم', 'داور میز'];
+        const EXTRA_ROLES = ['داور خط ۱', 'داور خط ۲'];
+        const ALL_ROLES = [...BASE_ROLES, ...EXTRA_ROLES];
+        
+        // معیارهای ارزیابی
+        const EVALUATION_CRITERIA = {
+            'presence_discipline': '۱. حضور و نظم (به موقع بودن، پوشش، تجهیزات)',
+            'focus': '۲. تمرکز در بازی (دقت و پایش)',
+            'field_control': '۳. تسلط بر زمین (پوشش و موقعیت‌گیری)',
+            'behavior_management': '۴. مدیریت رفتار انضباطی (کنترل بازیکنان و سرپرستان)',
+            'tension_management': '۵. مدیریت فضای مسابقه (جلوگیری از تشنج)',
+            'authority_use': '۶. استفاده از اختیارات (به‌موقع بودن جریمه‌ها)',
+            'rules_mastery': '۷. تسلط بر قوانین (عدم اشتباه در قوانین بدیهی)',
+            'impactful_mistakes': '۸. اشتباهات تأثیرگذار',
+            'team_coordination': '۹. هماهنگی تیمی (با سایر داوران)',
+            'overall_score': '۱۰. نمره کلی (جمع‌بندی عملکرد)',
+        };
+
+        // --- توابع کمکی ---
+        const parseTime = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes; // زمان بر حسب دقیقه از نیمه شب
+        };
+
+        const formatTime = (minutes) => {
+            const h = Math.floor(minutes / 60).toString().padStart(2, '0');
+            const m = (minutes % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
+        };
+
+        const parseUnavailability = (unavailabilityStr) => {
+            if (!unavailabilityStr) return [];
+            return unavailabilityStr.split(';').map(range => {
+                const [start, end] = range.trim().split('-');
+                if (start && end) {
+                    return {
+                        start: parseTime(start.trim()),
+                        end: parseTime(end.trim())
+                    };
+                }
+                return null;
+            }).filter(r => r);
+        };
+        
+        const parseData = (key, dataStr) => {
+            const lines = dataStr.trim().split('\n').filter(line => line.trim() !== '');
+            const parsed = [];
+            
+            for (const line of lines) {
+                const parts = line.split(',').map(p => p.trim());
+                if (key === 'referees' && parts.length >= 4) {
+                    parsed.push({
+                        name: parts[0],
+                        branch: parts[1],
+                        level: parts[2].toUpperCase(), // A, B, C
+                        playerTeam: parts[3] !== '-' ? parts[3] : null,
+                        unavailability: parseUnavailability(parts[4] || ''),
+                        scoreHistory: []
+                    });
+                } else if (key === 'teams' && parts.length === 2) {
+                    parsed.push({ name: parts[0], branch: parts[1] });
+                } else if (key === 'matches' && parts.length >= 8) {
+                    parsed.push({
+                        tournament: parts[0],
+                        team1: parts[1],
+                        team2: parts[2],
+                        date: parts[3],
+                        stage: parts[4], // گروهی، حذفی، نیمه نهایی، رده بندی، فینال
+                        time: parts[5], // HH:MM
+                        field: parts[6], // 1 یا 2
+                        is5Ref: parts[7].toLowerCase() === 'بله' || parts[7].toLowerCase() === 'yes'
+                    });
+                }
+            }
+            return parsed;
+        };
+
+        const transformInputData = () => {
+            allReferees = storedData.referees;
+            allTeams = storedData.teams.reduce((acc, team) => {
+                acc[team.name] = team.branch;
+                return acc;
+            }, {});
+        };
+
+        // --- مدیریت دسترسی و UI ---
+        const getDocRef = (collectionName) => {
+            if (db) return doc(db, 'artifacts', appId, 'public', 'data', collectionName, 'data');
+            return null;
+        };
+        
+        const checkAccessAndSetMode = () => {
+            const statusEl = document.getElementById('auth-status');
+            const modeDisplayEl = document.getElementById('mode-display');
+            const mainContentEl = document.getElementById('main-content');
+            const readOnlyContainer = document.querySelector('.read-only-inputs');
+
+            // بررسی دسترسی مدیر
+            isManager = userId === MANAGER_USER_ID; 
+            isReadOnly = !isManager; 
+
+            if (isReadOnly) {
+                // --- حالت Read-Only (پیش‌فرض) ---
+                mainContentEl.classList.add('read-only-overlay');
+                readOnlyContainer.classList.add('read-only-inputs');
+                modeDisplayEl.innerHTML = `<i class="fas fa-eye text-yellow-600"></i> **حالت فقط مشاهده:** دسترسی ویرایش ندارید.`;
+                document.getElementById('manager-tools').classList.add('hidden');
+            } else if (isManager) {
+                // --- حالت مدیر (Full Access) ---
+                mainContentEl.classList.remove('read-only-overlay');
+                readOnlyContainer.classList.remove('read-only-inputs');
+                
+                document.getElementById('generate-share-link').classList.remove('hidden');
+                document.getElementById('toggle-manager-mode').classList.remove('hidden');
+                document.getElementById('manager-tools').classList.remove('hidden');
+
+                modeDisplayEl.innerHTML = `<i class="fas fa-user-shield text-green-700"></i> **مدیر:** دسترسی کامل (ویرایش و چینش).`;
+            } 
+            
+            statusEl.textContent = isManager ? 'مدیر سیستم' : 'بازدیدکننده';
+            updateManagerModeUI();
+        };
+
+        const updateManagerModeUI = () => {
+            if (!isManager) return;
+
+            const btn = document.getElementById('toggle-manager-mode');
+            const textEl = document.getElementById('manager-mode-text');
+            const content = document.getElementById('main-content');
+            const readOnlyContainer = document.querySelector('.read-only-inputs');
+
+            if (isManagerMode) {
+                content.style.borderColor = '#f44336';
+                content.style.borderWidth = '2px';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('bg-red-600', 'hover:bg-red-700');
+                textEl.textContent = 'غیرفعال‌سازی ویرایش دستی (خطرناک)';
+                readOnlyContainer.classList.remove('read-only-inputs'); 
+            } else {
+                content.style.borderColor = '';
+                content.style.borderWidth = '';
+                btn.classList.add('btn-primary');
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                textEl.textContent = 'فعال‌سازی ویرایش دستی (مدیر)';
+                if (isManager) readOnlyContainer.classList.remove('read-only-inputs');
+            }
+            updateFinalSaveButton();
+        };
+        
+        window.toggleManagerMode = () => {
+            if (isManager) {
+                isManagerMode = !isManagerMode;
+                updateManagerModeUI();
+                if (isManagerMode) {
+                    showMessage('access-control-area', 'حالت ویرایش دستی فعال شد! اکنون می‌توانید چینش‌های دارای تناقض را ذخیره کنید.', 'danger');
+                } else {
+                    showMessage('access-control-area', 'حالت ویرایش دستی غیرفعال شد.', 'success');
+                }
+            }
+        };
+        
+        window.generateShareLink = () => {
+            const baseUrl = window.location.href.split('?')[0]; 
+            const shareUrl = baseUrl;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showMessage('access-control-area', 'لینک اشتراک‌گذاری (فقط مشاهده) کپی شد. هر کس بدون User ID مدیر وارد شود، حالت مشاهده را خواهد داشت.', 'success');
+            }).catch(err => {
+                showMessage('access-control-area', 'خطا در کپی: ' + err, 'danger');
+            });
+        };
+        
+        // --- توابع Firestore ---
+        const showLoading = (show) => {
+            document.getElementById('loading-overlay').classList.toggle('hidden', !show);
+        };
+        
+        const setupFirestoreListeners = () => {
+            if (!db) return;
+            const collections = ['referees', 'teams', 'matches', 'assignment', 'evaluations'];
+            
+            collections.forEach(key => {
+                onSnapshot(getDocRef(key), (docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                        const data = docSnapshot.data().data || [];
+                        storedData[key] = data;
+                        if (key === 'teams' || key === 'referees') {
+                            transformInputData(); 
+                        }
+                        if (key === 'assignment') {
+                            displayAssignmentResult(storedData.assignment);
+                            populateMatchSelect(storedData.assignment);
+                        } else if (key === 'referees' || key === 'teams' || key === 'matches') {
+                            const inputId = `${key}-input`;
+                            const inputEl = document.getElementById(inputId);
+                            if (inputEl) {
+                                inputEl.value = storedData[key].map(item => {
+                                    if (key === 'referees') {
+                                        return `${item.name}, ${item.branch}, ${item.level}, ${item.playerTeam || '-'}, ${item.unavailability.map(u => `${formatTime(u.start)}-${formatTime(u.end)}`).join(';')}`;
+                                    } else if (key === 'teams') {
+                                        return `${item.name}, ${item.branch}`;
+                                    } else if (key === 'matches') {
+                                        return `${item.tournament}, ${item.team1}, ${item.team2}, ${item.date}, ${item.stage}, ${item.time}, ${item.field}, ${item.is5Ref ? 'بله' : 'خیر'}`;
+                                    }
+                                }).join('\n');
+                            }
+                        }
+                    } else {
+                        storedData[key] = [];
+                        if (key === 'assignment') displayAssignmentResult([]);
+                    }
+                });
+            });
+        };
+
+        window.saveData = async (key, inputId) => {
+            if (isReadOnly && !isManager) return showMessage('input-section', 'فقط مدیران اجازه ویرایش دارند.', 'danger');
+            if (!db) return showMessage('input-section', 'خطا: دیتابیس متصل نیست.', 'danger');
+
+            const dataStr = document.getElementById(inputId).value;
+            let parsedData;
+            
+            try {
+                if (key === 'teams') {
+                    parsedData = parseData('teams', dataStr);
+                } else if (key === 'referees') {
+                    parsedData = parseData('referees', dataStr);
+                } else if (key === 'matches') {
+                    parsedData = parseData('matches', dataStr);
+                } else {
+                    return;
+                }
+            } catch (error) {
+                console.error("Parsing Error:", error);
+                showMessage('input-section', `خطا در تجزیه داده‌های ${key}: فرمت ورودی صحیح نیست.`, 'danger');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const docRef = getDocRef(key);
+                await setDoc(docRef, { data: parsedData });
+                showMessage('input-section', `داده‌های ${key} با موفقیت ذخیره شدند.`, 'success');
+            } catch (e) {
+                console.error("Error saving document: ", e);
+                showMessage('input-section', 'خطا در ذخیره داده‌ها در دیتابیس.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        // --- منطق احراز هویت ---
+        const setupAuth = async () => {
+            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                // --- بخش اصلاح شده برای نمایش User ID در محیط محلی ---
+                document.getElementById('auth-status').textContent = 'خطا در پیکربندی فایربیس.';
+                
+                // از User ID واقعی استفاده می‌کنیم تا دسترسی فعال شود
+                userId = MANAGER_USER_ID; 
+                document.getElementById('current-user-id').textContent = userId; 
+                
+                isAuthReady = true;
+                checkAccessAndSetMode();
+                showMessage('access-control-area', 'هشدار: به دلیل اجرای محلی، دیتابیس فعال نیست و داده‌ها ذخیره نمی‌شوند!', 'danger');
+                
+                return; // از اتصال به Firebase جلوگیری می‌کند
+            }
+
+            // --- اجرای Firebase در محیط میزبانی ---
+            
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            document.getElementById('auth-status').textContent = 'در حال احراز هویت...';
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                            userId = userCredential.user.uid;
+                        } else {
+                            const userCredential = await signInAnonymously(auth);
+                            userId = userCredential.user.uid;
+                        }
+                    } catch (error) {
+                        console.error("Authentication failed: ", error);
+                        userId = 'anonymous-' + Math.random().toString(36).substring(2, 9);
+                    }
+                }
+                
+                document.getElementById('current-user-id').textContent = userId;
+                isAuthReady = true;
+                checkAccessAndSetMode();
+                setupFirestoreListeners();
+            });
+        };
+
+        window.onload = setupAuth;
+
+        // --- منطق اصلی چینش (Smart Assignment Logic) ---
+        
+        // --- توابع بررسی صلاحیت (Ineligibility Rules) ---
+        
+        // قانون شماره ۱: تضاد منافع نمایندگی
+        const isBranchConflict = (referee, match) => {
+            const refBranch = referee.branch;
+            if (refBranch.toLowerCase() === 'آزاد') return false; 
+
+            const team1Branch = allTeams[match.team1];
+            const team2Branch = allTeams[match.team2];
+
+            return refBranch === team1Branch || refBranch === team2Branch;
+        };
+
+        // قانون شماره ۲: محدودیت‌های سطح و نقش
+        const isRoleLevelEligible = (referee, role, match) => {
+            const level = referee.level;
+            const stage = match.stage;
+            const isFinalStage = ['نیمه نهایی', 'رده بندی', 'فینال'].includes(stage);
+
+            // سطح C: فقط داور میز، ممنوعیت در مراحل حساس
+            if (level === 'C') {
+                if (role !== 'داور میز' && !role.startsWith('داور خط')) return false; 
+                // داوران خط (پشت دروازه) برای C مجاز هستند اما نه در مراحل حساس
+                if (isFinalStage && (role === 'داور اول' || role === 'داور دوم' || role === 'داور میز')) return false; 
+            }
+            
+            // سطح B در مراحل حساس (نیمه نهایی/فینال):
+            if (level === 'B' && isFinalStage) {
+                if (role === 'داور اول' || role === 'داور دوم') return false; // ممنوعیت داور اول و دوم
+            }
+            
+            // سطح A: همیشه مجاز
+            return true;
+        };
+        
+        // قانون شماره ۳: تضاد زمان‌بندی (بازیکن و عدم دسترسی شخصی)
+        const isTimeEligible = (referee, match) => {
+            const matchTimeMins = parseTime(match.time);
+            const gameDuration = 30; 
+
+            // 1. بررسی تضاد بازیکن-داور
+            if (referee.playerTeam) {
+                const playingMatches = storedData.matches.filter(m => 
+                    m.team1 === referee.playerTeam || m.team2 === referee.playerTeam
+                );
+
+                for (const playingMatch of playingMatches) {
+                    if (playingMatch.date === match.date) {
+                        const playingTimeMins = parseTime(playingMatch.time);
+                        
+                        const conflictStart = playingTimeMins - gameDuration; 
+                        const conflictEnd = playingTimeMins + gameDuration;    
+                        
+                        if (matchTimeMins >= conflictStart && matchTimeMins <= conflictEnd) {
+                             return { eligible: false, reason: `تضاد بازیکن-داور با بازی تیم ${referee.playerTeam} در زمان ${playingMatch.time}.` };
+                        }
+                    }
+                }
+            }
+
+            // 2. بررسی عدم دسترسی شخصی
+            for (const range of referee.unavailability) {
+                if (matchTimeMins >= range.start && matchTimeMins < range.end) {
+                    return { eligible: false, reason: `محدودیت زمانی شخصی (${formatTime(range.start)}-${formatTime(range.end)}).` };
+                }
+            }
+            
+            return { eligible: true };
+        };
+
+        // --- تابع جامع بررسی صلاحیت ---
+        const isRefAvailableForRole = (referee, role, match, assignedRefs) => {
+            if (isBranchConflict(referee, match)) {
+                return { eligible: false, reason: `تضاد نمایندگی با تیم‌های ${match.team1} و ${match.team2}.` };
+            }
+
+            const timeCheck = isTimeEligible(referee, match);
+            if (!timeCheck.eligible) {
+                return { eligible: false, reason: timeCheck.reason };
+            }
+
+            if (!isRoleLevelEligible(referee, role, match)) {
+                return { eligible: false, reason: `محدودیت سطح ${referee.level} برای نقش ${role} در مرحله ${match.stage}.` };
+            }
+
+            if (assignedRefs.includes(referee.name)) {
+                return { eligible: false, reason: `قبلاً به این مسابقه در نقشی دیگر اختصاص داده شده.` };
+            }
+            
+            return { eligible: true };
+        };
+
+        // --- الگوریتم اصلی چینش ---
+        window.startAssignmentProcess = () => {
+            if (isReadOnly && !isManager) return showMessage('input-section', 'برای تولید چینش باید وارد پنل مدیر شوید.', 'danger');
+
+            if (!allReferees.length || !storedData.matches.length || !Object.keys(allTeams).length) {
+                return showMessage('input-section', 'لطفاً لیست داوران، تیم‌ها و مسابقات را تکمیل و ذخیره کنید.', 'danger');
+            }
+            
+            showLoading(true);
+            currentConflicts = [];
+            const newAssignment = [];
+            
+            const sortedRefs = [...allReferees].sort((a, b) => {
+                const levels = { A: 3, B: 2, C: 1 };
+                return levels[b.level] - levels[a.level];
+            });
+            
+            const sortedMatches = storedData.matches.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                if (dateA - dateB !== 0) return dateA - dateB;
+                return parseTime(a.time) - parseTime(b.time);
+            });
+
+            for (const match of sortedMatches) {
+                const matchRoles = match.is5Ref ? ALL_ROLES : BASE_ROLES;
+                const matchAssignment = { matchId: match.date + match.time + match.team1, match: match, assignment: {} };
+                let assignedRefsNames = []; 
+
+                for (const role of matchRoles) {
+                    let eligibleCandidates = [];
+                    let bestLevel = null;
+                    
+                    for (const ref of sortedRefs) {
+                        const check = isRefAvailableForRole(ref, role, match, assignedRefsNames);
+                        if (check.eligible) {
+                            
+                            // اعمال اولویت سطح A، B، C
+                            if (!bestLevel || (ref.level === 'A' && bestLevel !== 'A') || (ref.level === 'B' && bestLevel === 'C')) {
+                                bestLevel = ref.level; 
+                                eligibleCandidates = []; 
+                            }
+                            if (ref.level === bestLevel) {
+                                eligibleCandidates.push(ref);
+                            }
+                        }
+                    }
+                    
+                    // قانون B در نقش داور اول (اگر A حضور نداشته باشد)
+                    if (role === 'داور اول' && bestLevel === 'B') {
+                        const aRefPresent = matchRoles.some(r => r !== 'داور اول' && matchAssignment.assignment[r] && allReferees.find(ar => ar.name === matchAssignment.assignment[r].refName && ar.level === 'A'));
+                        if (aRefPresent) {
+                            eligibleCandidates = []; 
+                        }
+                    }
+
+                    if (eligibleCandidates.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * eligibleCandidates.length);
+                        const selectedRef = eligibleCandidates[randomIndex];
+                        matchAssignment.assignment[role] = { refName: selectedRef.name, refLevel: selectedRef.level };
+                        assignedRefsNames.push(selectedRef.name);
+                    } else {
+                        currentConflicts.push({
+                            match: match,
+                            role: role,
+                            reason: 'هیچ داور واجد شرایطی یافت نشد (بررسی تضاد نمایندگی/زمان/سطح).',
+                            candidates: getConflictResolutionCandidates(role, match, assignedRefsNames),
+                            tempRefName: null 
+                        });
+                        matchAssignment.assignment[role] = { refName: '*** تناقض ***', refLevel: 'X' };
+                    }
+                }
+                newAssignment.push(matchAssignment);
+            }
+            
+            showLoading(false);
+            
+            storedData.assignment = newAssignment;
+            displayAssignmentResult(newAssignment);
+            checkAndDisplayQuotas(newAssignment);
+
+            if (currentConflicts.length > 0 && !isManagerMode) {
+                openConflictModal();
+            } else {
+                updateFinalSaveButton(); 
+            }
+        };
+
+        // --- توابع حل تناقض ---
+        const getConflictResolutionCandidates = (role, match, assignedRefsNames) => {
+            const potentialRefs = [];
+            for (const ref of allReferees) {
+                // داورانی که تنها تضادشان محدودیت سطح/نمایندگی است و نه تضاد زمانی/تکرار در بازی.
+                const isTimeConflict = !isTimeEligible(ref, match).eligible;
+                const isAssigned = assignedRefsNames.includes(ref.name);
+
+                if (!isTimeConflict && !isAssigned) {
+                    const check = isRefAvailableForRole(ref, role, match, assignedRefsNames);
+                    let reason = check.eligible ? 'واجد شرایط کامل' : check.reason;
+                    
+                    potentialRefs.push({ name: ref.name, level: ref.level, reason: reason });
+                }
+            }
+            
+            return potentialRefs.sort((a, b) => {
+                const levels = { A: 3, B: 2, C: 1 };
+                return levels[b.level] - levels[a.level];
+            });
+        };
+        
+        window.openConflictModal = () => {
+            if (currentConflicts.length === 0) return;
+            document.getElementById('conflict-modal').classList.remove('hidden');
+            renderConflictList();
+            document.getElementById('final-save-btn').disabled = true;
+            document.getElementById('close-conflict-modal').disabled = true;
+        };
+
+        window.closeConflictModal = () => {
+            document.getElementById('conflict-modal').classList.add('hidden');
+        };
+
+        const renderConflictList = () => {
+            const listEl = document.getElementById('conflict-list');
+            listEl.innerHTML = '';
+            let resolvedCount = 0;
+
+            currentConflicts.forEach((conflict, index) => {
+                if (conflict.tempRefName) {
+                    resolvedCount++;
+                }
+
+                const matchInfo = `${conflict.match.tournament} (${conflict.match.stage}) - ${conflict.match.team1} vs ${conflict.match.team2} در زمان ${conflict.match.time}`;
+                const refAssigned = conflict.tempRefName || `*** نامشخص ***`;
+                const isResolved = !!conflict.tempRefName;
+
+                const conflictHtml = `
+                    <div class="p-4 rounded-lg ${isResolved ? 'bg-green-50' : 'bg-red-50'} border ${isResolved ? 'border-green-300' : 'border-red-300'}">
+                        <p class="font-bold text-lg mb-1 ${isResolved ? 'text-green-700' : 'text-red-700'}">مسابقه: ${matchInfo}</p>
+                        <p class="font-semibold text-gray-800">نقش مورد نیاز: ${conflict.role}</p>
+                        <p class="text-sm ${isResolved ? 'text-green-600' : 'text-red-600'}">دلیل تناقض: ${conflict.reason}</p>
+                        <p class="mt-2 font-bold">انتخاب فعلی: <span class="${isResolved ? 'text-green-800' : 'text-red-800'}">${refAssigned}</span></p>
+
+                        ${!isResolved ? `
+                            <div class="mt-3">
+                                <p class="font-semibold text-gray-800">پیشنهادات جایگزین:</p>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    ${conflict.candidates.map(candidate => `
+                                        <button onclick="resolveConflict(${index}, '${candidate.name}')" 
+                                                class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm py-1 px-3 rounded-full transition duration-150">
+                                            ${candidate.name} (${candidate.level}) <span class="text-xs text-gray-500">${candidate.reason === 'واجد شرایط کامل' ? '' : '(نقض قانون)'}</span>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                listEl.innerHTML += conflictHtml;
+            });
+
+            const total = currentConflicts.length;
+            const statusMsg = document.getElementById('conflict-status-message');
+            
+            if (resolvedCount === total) {
+                statusMsg.className = 'mt-6 font-bold text-center text-green-700';
+                statusMsg.innerHTML = `<i class="fas fa-check-circle"></i> تبریک! تمامی ${total} تناقض رفع شد. اکنون می‌توانید ذخیره نهایی کنید.`;
+                document.getElementById('close-conflict-modal').disabled = false;
+                updateFinalSaveButton(true);
+            } else {
+                statusMsg.className = 'mt-6 font-bold text-center text-red-700';
+                statusMsg.innerHTML = `لطفاً ${total - resolvedCount} مورد باقی‌مانده را رفع کنید.`;
+                updateFinalSaveButton(false);
+            }
+        };
+
+        window.resolveConflict = (index, refName) => {
+            currentConflicts[index].tempRefName = refName;
+            
+            const conflict = currentConflicts[index];
+            storedData.assignment.forEach(item => {
+                if (item.matchId === conflict.match.date + conflict.match.time + conflict.match.team1) {
+                    item.assignment[conflict.role] = { 
+                        refName: refName, 
+                        refLevel: allReferees.find(r => r.name === refName).level 
+                    };
+                }
+            });
+
+            renderConflictList();
+            displayAssignmentResult(storedData.assignment); 
+        };
+
+        const updateFinalSaveButton = (isConflictFree = currentConflicts.length === 0) => {
+            const btn = document.getElementById('final-save-btn');
+            if (isConflictFree || isManagerMode) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.style.backgroundColor = '#4CAF50'; 
+                btn.innerHTML = `<i class="fas fa-save"></i> ذخیره نهایی چینش`;
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.style.backgroundColor = '#f44336'; 
+                btn.innerHTML = `<i class="fas fa-lock"></i> ذخیره نهایی (رفع تناقض لازم است)`;
+            }
+        };
+
+        // --- نمایش نتایج و هشدارها ---
+        const displayAssignmentResult = (assignment) => {
+            const resultEl = document.getElementById('assignment-result');
+            if (!assignment || assignment.length === 0) {
+                resultEl.innerHTML = '<p class="text-gray-500">پس از تولید چینش، نتایج در اینجا نمایش داده خواهد شد.</p>';
+                return;
+            }
+
+            resultEl.innerHTML = assignment.map(item => {
+                const isConflict = Object.values(item.assignment).some(a => a.refName === '*** تناقض ***');
+                const rolesHtml = Object.entries(item.assignment).map(([role, ref]) => {
+                    const statusClass = ref.refName === '*** تناقض ***' ? 'text-red-600 font-bold' : 'text-green-700';
+                    return `
+                        <div class="flex items-center space-x-2 space-x-reverse">
+                            <span class="text-sm text-gray-600">${role}:</span>
+                            <span class="${statusClass}">${ref.refName}</span>
+                            <span class="text-xs text-gray-500">(${ref.refLevel})</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                const assignmentId = item.matchId;
+
+                return `
+                    <div id="assignment-${assignmentId}" class="p-4 rounded-lg ${isConflict ? 'bg-red-50 border border-red-300' : 'bg-green-50 border border-green-300'}">
+                        <p class="font-bold text-lg mb-2 text-gray-800">${item.match.team1} vs ${item.match.team2} (${item.match.stage} - ${item.match.time})</p>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            ${rolesHtml}
+                        </div>
+                        <div class="mt-3 flex justify-end space-x-2 space-x-reverse read-only-inputs">
+                            <button onclick="generateMatchSummary('${item.match.tournament}', '${item.match.stage}', '${item.match.team1}', '${item.match.team2}', 'summary-output-${assignmentId}')" 
+                                class="bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm py-1 px-3 rounded-full">
+                                ✨ تولید خلاصه و لحن بازی (Gemini)
+                            </button>
+                        </div>
+                        <div id="summary-output-${assignmentId}" class="mt-2 p-2 text-sm text-gray-700"></div>
+                    </div>
+                `;
+            }).join('');
+        };
+        
+        const checkAndDisplayQuotas = (assignment) => {
+            const warningsEl = document.getElementById('quota-warnings');
+            warningsEl.innerHTML = '<h3 class="font-bold text-lg text-gray-700 mb-2">💡 هشدارهای سقف/کف کار هفتگی:</h3>';
+            
+            if (!assignment || assignment.length === 0) return;
+
+            const assignmentCounts = allReferees.reduce((acc, ref) => {
+                acc[ref.name] = { total: 0, first: 0, second: 0, ref: ref };
+                return acc;
+            }, {});
+
+            assignment.forEach(item => {
+                Object.entries(item.assignment).forEach(([role, ref]) => {
+                    if (ref.refName !== '*** تناقض ***' && assignmentCounts[ref.refName]) {
+                        assignmentCounts[ref.refName].total++;
+                        if (role === 'داور اول') assignmentCounts[ref.refName].first++;
+                        if (role === 'داور دوم') assignmentCounts[ref.refName].second++;
+                    }
+                });
+            });
+
+            let warningsHtml = '';
+            Object.values(assignmentCounts).forEach(item => {
+                const ref = item.ref;
+                if (ref.level === 'A' && item.total > 5) {
+                    warningsHtml += `<div class="danger-alert text-sm"><i class="fas fa-exclamation-circle"></i> **هشدار سقف (A):** داور ${ref.name} (${ref.level}) در ${item.total} بازی قضاوت دارد (بیش از سقف ۵).</div>`;
+                }
+
+                if (ref.level === 'A' && (item.first + item.second < 2 || item.first < 1)) {
+                    warningsHtml += `<div class="danger-alert text-sm"><i class="fas fa-exclamation-circle"></i> **هشدار کف (A):** داور ${ref.name} (${ref.level}) فقط ${item.first} داور اول و ${item.second} داور دوم بوده (حداقل کار رعایت نشده).</div>`;
+                }
+                
+                if (ref.level === 'B' && item.second < 1) { 
+                    warningsHtml += `<div class="danger-alert text-sm"><i class="fas fa-exclamation-circle"></i> **هشدار کف (B):** داور ${ref.name} (${ref.level}) کمتر از ۱ بازی داور دوم بوده است.</div>`;
+                }
+            });
+
+            warningsEl.innerHTML += warningsHtml || '<p class="text-sm text-gray-500">هیچ هشدار سقف یا کف کاری مشاهده نشد.</p>';
+        };
+
+        window.saveAssignment = async () => {
+            if (isReadOnly && !isManager) return showMessage('assignment-result', 'برای ذخیره نهایی باید وارد پنل مدیر شوید.', 'danger');
+            if (!db) return showMessage('assignment-result', 'خطا: دیتابیس متصل نیست.', 'danger');
+
+            if (currentConflicts.length > 0 && !isManagerMode) {
+                return showMessage('assignment-result', 'ابتدا باید تمام تناقضات حیاتی را رفع کنید یا حالت ویرایش دستی را فعال نمایید.', 'danger');
+            }
+
+            try {
+                showLoading(true);
+                const docRef = getDocRef('assignment');
+                await setDoc(docRef, { data: storedData.assignment });
+                showMessage('assignment-result', 'چینش نهایی با موفقیت ذخیره شد.', 'success');
+                currentConflicts = []; 
+                updateFinalSaveButton();
+            } catch (e) {
+                console.error("Error saving assignment: ", e);
+                showMessage('assignment-result', 'خطا در ذخیره چینش نهایی در دیتابیس.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        // --- توابع ارزیابی ---
+        const populateMatchSelect = (assignment) => {
+            const selectEl = document.getElementById('evaluation-match-select');
+            const loadBtn = document.getElementById('load-eval-btn');
+            selectEl.innerHTML = '<option value="">--- مسابقه را انتخاب کنید ---</option>';
+
+            if (!assignment || assignment.length === 0) {
+                loadBtn.disabled = true;
+                return;
+            }
+
+            assignment.forEach(item => {
+                const matchId = item.matchId;
+                const matchDisplay = `${item.match.team1} vs ${item.match.team2} (${item.match.date} ${item.match.time})`;
+                const roles = Object.values(item.assignment);
+                const isConflict = roles.some(a => a.refName === '*** تناقض ***');
+                
+                if (!isConflict) {
+                    selectEl.innerHTML += `<option value="${matchId}">${matchDisplay}</option>`;
+                }
+            });
+            loadBtn.disabled = selectEl.options.length <= 1;
+        };
+
+        window.loadEvaluationForm = () => {
+            if (isReadOnly && !isManager) return showMessage('evaluation-panel', 'برای بارگذاری فرم باید وارد پنل مدیر شوید.', 'danger');
+
+            const matchId = document.getElementById('evaluation-match-select').value;
+            if (!matchId) return;
+
+            const matchAssignment = storedData.assignment.find(item => item.matchId === matchId);
+            if (!matchAssignment) return;
+
+            const formArea = document.getElementById('evaluation-form-area');
+            formArea.innerHTML = '';
+
+            Object.entries(matchAssignment.assignment).forEach(([role, ref]) => {
+                const refName = ref.refName;
+                const refLevel = ref.refLevel;
+                const existingEvaluation = storedData.evaluations.find(e => e.matchId === matchId && e.refName === refName);
+                
+                const formHtml = `
+                    <div id="eval-form-${refName.replace(/\s/g, '-')}" class="p-4 card mb-6 bg-gray-50 border-t-4 border-yellow-500">
+                        <h4 class="text-xl font-bold mb-3 text-gray-800">${role}: ${refName} (سطح ${refLevel})</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${Object.entries(EVALUATION_CRITERIA).map(([key, label]) => {
+                                const initialValue = existingEvaluation ? existingEvaluation.scores[key] || 5 : 5;
+                                return `
+                                    <div>
+                                        <label for="${refName}-${key}" class="block text-sm font-medium text-gray-700">${label} (نمره ۱ تا ۱۰):</label>
+                                        <input type="range" id="${refName}-${key}" min="1" max="10" value="${initialValue}" 
+                                            oninput="document.getElementById('${refName}-${key}-val').textContent=this.value" 
+                                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                        <span id="${refName}-${key}-val" class="text-sm font-bold text-blue-600">${initialValue}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        
+                        <div class="mt-5 flex justify-between items-center read-only-inputs">
+                            <button onclick="saveEvaluation('${matchId}', '${refName}')" class="btn-primary py-2 px-4 text-sm">
+                                <i class="fas fa-save"></i> ثبت نمرات
+                            </button>
+                            <button onclick="generateFeedback('${matchId}', '${refName}', 'feedback-output-${refName.replace(/\s/g, '-')}')" 
+                                class="bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm py-2 px-4 rounded-lg">
+                                ✨ تحلیل عملکرد و بازخورد (Gemini)
+                            </button>
+                        </div>
+                        <div id="feedback-output-${refName.replace(/\s/g, '-')}" class="mt-3 p-3 bg-white rounded-lg border text-sm">
+                            ${existingEvaluation && existingEvaluation.feedback ? existingEvaluation.feedback : 'بازخورد هوشمند در اینجا نمایش داده می‌شود.'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.saveEvaluation = async (matchId, refName) => {
+            if (isReadOnly && !isManager) return showMessage('evaluation-panel', 'برای ثبت نمرات باید وارد پنل مدیر شوید.', 'danger');
+            if (!db) return showMessage('evaluation-panel', 'خطا: دیتابیس متصل نیست.', 'danger');
+
+
+            const scores = {};
+            let isFormValid = true;
+
+            Object.keys(EVALUATION_CRITERIA).forEach(key => {
+                const inputEl = document.getElementById(`${refName}-${key}`);
+                if (inputEl) {
+                    scores[key] = parseInt(inputEl.value);
+                } else {
+                    isFormValid = false;
+                }
+            });
+
+            if (!isFormValid) {
+                return showMessage('evaluation-panel', 'خطا: فرم نمره‌دهی کامل نیست.', 'danger');
+            }
+
+            try {
+                showLoading(true);
+                const docRef = getDocRef('evaluations');
+                
+                const docSnapshot = await getDoc(docRef);
+                let evaluations = docSnapshot.exists() ? docSnapshot.data().data || [] : [];
+                
+                const existingIndex = evaluations.findIndex(e => e.matchId === matchId && e.refName === refName);
+                
+                const newEvaluation = {
+                    matchId: matchId,
+                    refName: refName,
+                    scores: scores,
+                    timestamp: new Date().toISOString(),
+                    feedback: (existingIndex !== -1) ? evaluations[existingIndex].feedback : 'بازخورد در انتظار تولید.'
+                };
+
+
+                if (existingIndex !== -1) {
+                    evaluations[existingIndex] = newEvaluation; 
+                } else {
+                    evaluations.push(newEvaluation); 
+                }
+
+                await setDoc(docRef, { data: evaluations });
+                showMessage('evaluation-panel', `نمرات داور ${refName} با موفقیت ثبت شد.`, 'success');
+            } catch (e) {
+                console.error("Error saving evaluation: ", e);
+                showMessage('evaluation-panel', 'خطا در ذخیره ارزیابی در دیتابیس.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        window.generateMatchSummary = async (tournament, stage, team1, team2, outputId) => {
+            const systemPrompt = `شما یک کارشناس باتجربه فوتسال در کنگره ۶۰ هستید. بر اساس جزئیات مسابقه، یک خلاصه کوتاه (در یک پاراگراف کوتاه) با تمرکز بر حساسیت مرحله و نکات انضباطی احتمالی برای تیم داوری تولید کنید. از لحن جدی و حرفه‌ای استفاده کنید و با سلام شروع کنید.`;
+            const userQuery = `مسابقه: ${team1} در برابر ${team2}. تورنمنت: ${tournament}. مرحله: ${stage}. هدف: ارائه راهنمای داوری.`;
+            await callGeminiApi(systemPrompt, userQuery, outputId);
+        };
+
+        window.generateFeedback = async (matchId, refName, outputId) => {
+            if (!db) return showMessage('evaluation-panel', 'خطا: دیتابیس متصل نیست.', 'danger');
+
+            const currentEvaluation = storedData.evaluations.find(e => e.matchId === matchId && e.refName === refName);
+            if (!currentEvaluation) return document.getElementById(outputId).innerHTML = '<span class="text-red-600">ابتدا نمرات داور را ثبت کنید.</span>';
+            
+            const scores = currentEvaluation.scores;
+            const refLevel = allReferees.find(r => r.name === refName)?.level || 'نامشخص';
+
+            let scoresText = '';
+            Object.entries(scores).forEach(([key, value]) => {
+                scoresText += `${EVALUATION_CRITERIA[key]}: ${value} از ۱۰.\n`;
+            });
+
+            const systemPrompt = `شما یک مربی و ارزیاب ارشد داوری در کنگره ۶۰ هستید. بر اساس نمرات داده شده، یک پاراگراف بازخورد سازنده و حرفه‌ای تولید کنید. ابتدا نقاط قوت (نمرات بالا) و سپس دو نکته قابل بهبود (نمرات پایین) را ذکر کنید. از لحن دلسوزانه و انگیزشی استفاده کنید.`;
+            const userQuery = `داور: ${refName} (سطح ${refLevel}). نمرات عملکرد ۱۰گانه: \n${scoresText}\n. هدف: تحلیل نمرات و ارائه بازخورد سازنده.`;
+            
+            const feedbackText = await callGeminiApi(systemPrompt, userQuery, outputId);
+
+            if (feedbackText) {
+                const docRef = getDocRef('evaluations');
+                
+                const docSnapshot = await getDoc(docRef);
+                let evaluations = docSnapshot.exists() ? docSnapshot.data().data || [] : [];
+                
+                const existingIndex = evaluations.findIndex(e => e.matchId === matchId && e.refName === refName);
+                if (existingIndex !== -1) {
+                    evaluations[existingIndex].feedback = feedbackText;
+                    await setDoc(docRef, { data: evaluations });
+                    loadEvaluationForm();
+                }
+            }
+        };
+
+        const callGeminiApi = async (systemPrompt, userQuery, outputId) => {
+            const outputEl = document.getElementById(outputId);
+            outputEl.innerHTML = '<div class="flex items-center space-x-2 space-x-reverse text-blue-600"><div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div><span class="text-sm">در حال تحلیل هوشمند...</span></div>';
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            const API_KEY = ""; 
+            const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+
+
+            try {
+                const response = await fetch(`${GEMINI_API_URL}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    outputEl.innerHTML = `<i class="fas fa-magic text-purple-600"></i> ${text}`;
+                    return text;
+                } else {
+                    outputEl.innerHTML = '<span class="text-red-600">خطا: پاسخ هوش مصنوعی خالی است.</span>';
+                    return null;
+                }
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                outputEl.innerHTML = `<span class="text-red-600">خطا در ارتباط با هوش مصنوعی. (${error.message})</span>`;
+                return null;
+            }
+        };
+        
+        const showMessage = (targetId, message, type = 'info') => {
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+
+            const colorClass = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : (type === 'danger' ? 'bg-red-100 border-red-400 text-red-700' : 'bg-blue-100 border-blue-400 text-blue-700');
+            const icon = type === 'success' ? 'fas fa-check-circle' : (type === 'danger' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle');
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = `p-3 mb-4 border rounded-lg ${colorClass} transition-all duration-300 transform scale-100`;
+            messageEl.innerHTML = `<i class="${icon} ml-2"></i>${message}`;
+            
+            targetEl.prepend(messageEl);
+
+            setTimeout(() => {
+                messageEl.classList.add('opacity-0', 'scale-90');
+                messageEl.addEventListener('transitionend', () => messageEl.remove());
+            }, 5000);
+        };
+
+    </script>
+</body>
+</html>
